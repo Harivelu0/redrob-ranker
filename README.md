@@ -1,15 +1,4 @@
----
-title: IndiaRuns AI Redrob Ranker
-emoji: 🏆
-colorFrom: blue
-colorTo: indigo
-sdk: streamlit
-sdk_version: 1.35.0
-app_file: app.py
-pinned: false
----
-
-# IndiaRuns AI — Redrob India Data & AI Challenge
+# IndiaRuns AI Redrob India Data & AI Challenge
 
 **Track 1 · Team: Indiaruns AI · CPU-only hybrid ranking pipeline · 100,000 candidates → top 100**
 
@@ -17,11 +6,11 @@ pinned: false
 
 ## Live Demo
 
-👉 [HuggingFace Space — Interactive Leaderboard + Live Demo](https://huggingface.co/spaces/Haripvelu/redrob-ranker)
+👉 [HuggingFace Space  Interactive Leaderboard + Live Demo](https://huggingface.co/spaces/Haripvelu/redrob-ranker)
 
-- **Tab 1 — Leaderboard**: Search and filter top 100 candidates, read full reasoning
-- **Tab 2 — Live Demo**: Run full ranking pipeline on top 20 candidates
-- **Tab 3 — How It Works**: Full pipeline walkthrough
+- **Tab 1  Leaderboard**: Search and filter top 100 candidates, read full reasoning
+- **Tab 2  Live Demo**: Run full ranking pipeline on top 20 candidates
+- **Tab 3  How It Works**: Full pipeline walkthrough
 
 ---
 
@@ -29,7 +18,7 @@ pinned: false
 
 Two-stage, CPU-only. No LLM API calls. No external services.
 
-### Stage 1 — `precompute.py` (one-time, ~1.7 hours)
+### Stage 1  `precompute.py` (one-time, ~1.7 hours)
 
 | Step | What |
 |---|---|
@@ -38,26 +27,26 @@ Two-stage, CPU-only. No LLM API calls. No external services.
 | BM25 index | `BM25Okapi` over career descriptions |
 | Feature extraction | Per-candidate: skill quality, trajectory score, behavioral gate, boolean gates |
 
-### Stage 2 — `rank.py` (< 5 minutes)
+### Stage 2  `rank.py` (< 5 minutes)
 
 Weighted combination of 4 signals:
 
 | Signal | Weight | What it measures |
 |---|---|---|
-| BM25 | 0.20 | Keyword match — career text vs JD tokens |
-| FAISS cosine | 0.30 | Semantic similarity — candidate embedding vs JD embedding |
+| BM25 | 0.20 | Keyword match  career text vs JD tokens |
+| FAISS cosine | 0.30 | Semantic similarity  candidate embedding vs JD embedding |
 | Skill quality | 0.20 | Relevance × verified proficiency × tenure duration |
 | Trajectory | 0.30 | Production evidence + pre-LLM depth + seniority + company prestige |
 
 Then multiplied by:
-- **YOE fit** — soft penalty below 5yr, taper above 9yr
-- **ML product years** — rewards 4yr+ applied ML at product companies (JD requirement)
-- **Hard gates** — honeypot ×0.0, all-consulting ×0.20, cv-speech ×0.15, pure-research ×0.15, framework-only ×0.20
-- **Behavioral multiplier** — notice period, location, github activity, availability (range: 0.50–1.20)
+- **YOE fit**  soft penalty below 5yr, taper above 9yr
+- **ML product years**  rewards 4yr+ applied ML at product companies (JD requirement)
+- **Hard gates**  honeypot ×0.0, all-consulting ×0.20, cv-speech ×0.15, pure-research ×0.15, framework-only ×0.20
+- **Behavioral multiplier**  notice period, location, github activity, availability (range: 0.50–1.20)
 
 ---
 
-## Trajectory Score — 5 Components
+## Trajectory Score  5 Components
 
 ```
 0.35 × production_score     shipped/deployed/serving/a-b-test markers in career text
@@ -75,13 +64,13 @@ Then multiplied by:
 # Install dependencies
 pip install -r requirements.txt
 
-# Stage 1 — precompute (run once, ~1.7 hours on CPU)
+# Stage 1  precompute (run once, ~1.7 hours on CPU)
 python precompute.py \
     --candidates path/to/candidates.jsonl \
     --jd path/to/job_description.docx \
     --out artifacts/
 
-# Stage 2 — rank (< 5 minutes)
+# Stage 2  rank (< 5 minutes)
 python rank.py \
     --candidates path/to/candidates.jsonl \
     --artifacts artifacts/ \
