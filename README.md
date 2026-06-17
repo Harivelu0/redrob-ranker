@@ -1,14 +1,3 @@
----
-title: VibeRanker  Redrob AI Engineer Ranker
-emoji: 🏆
-colorFrom: blue
-colorTo: indigo
-sdk: streamlit
-sdk_version: 1.35.0
-app_file: app.py
-pinned: false
----
-
 # VibeRanker  Redrob India Data & AI Challenge
 
 **Track 1 · Team: Indiaruns AI · CPU-only hybrid ranking pipeline · 100,000 candidates → top 100**
