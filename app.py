@@ -246,7 +246,7 @@ with tab_about:
 
 | Step | What happens |
 |------|-------------|
-| JD encoding | `all-MiniLM-L6-v2` embeds the job description |
+| JD encoding | `BAAI/bge-small-en-v1.5` embeds the job description |
 | Candidate encoding | Same model encodes each candidate's career text → FAISS `IndexFlatIP` |
 | BM25 index | `BM25Okapi` index over career descriptions |
 | Feature extraction | Per-candidate: skill quality, trajectory score, behavioral gate, boolean gates |
@@ -276,7 +276,7 @@ Then multiplied by:
 
 | Model | Source | Usage |
 |-------|--------|-------|
-| `all-MiniLM-L6-v2` | HuggingFace (sentence-transformers) | Text embedding for FAISS + skill matching |
+| `BAAI/bge-small-en-v1.5` | HuggingFace (sentence-transformers) | Text embedding for FAISS + skill matching |
 
 No OpenAI · No Anthropic · No cloud inference · Runs on CPU
     """)

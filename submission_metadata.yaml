@@ -37,7 +37,7 @@ ai_usage_summary: |
 
 methodology_summary: |
   Two-stage CPU-only hybrid ranking pipeline. Stage 1 (precompute.py, ~1.7hr):
-  encodes 100K career texts with all-MiniLM-L6-v2, builds FAISS IndexFlatIP
+  encodes 100K career texts with BAAI/bge-small-en-v1.5, builds FAISS IndexFlatIP
   and BM25Okapi indexes, computes per-candidate features (skill quality, trajectory
   score, ML product years, behavioral gate, boolean gates). Stage 2 (rank.py, <5min):
   weighted combination of BM25 (0.20) + FAISS cosine (0.30) + skill quality (0.20)
@@ -51,7 +51,7 @@ track: "Track 1 - Data & AI Challenge"
 submission_version: "1.0"
 
 models_used:
-  - name: "all-MiniLM-L6-v2"
+  - name: "BAAI/bge-small-en-v1.5"
     source: "HuggingFace (sentence-transformers)"
     usage: "Text embedding for FAISS index and skill relevance scoring"
     runs_locally: true

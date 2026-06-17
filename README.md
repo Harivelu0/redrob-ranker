@@ -22,7 +22,7 @@ Two-stage, CPU-only. No LLM API calls. No external services.
 
 | Step | What |
 |---|---|
-| JD encoding | `all-MiniLM-L6-v2` embeds the job description |
+| JD encoding | `BAAI/bge-small-en-v1.5` embeds the job description (with BGE query prefix) |
 | Candidate encoding | Same model embeds 100K career texts → FAISS `IndexFlatIP` |
 | BM25 index | `BM25Okapi` over career descriptions |
 | Feature extraction | Per-candidate: skill quality, trajectory score, behavioral gate, boolean gates |
@@ -126,7 +126,7 @@ redrob-ranker/
 
 | Model | Source | Usage |
 |---|---|---|
-| `all-MiniLM-L6-v2` | HuggingFace sentence-transformers | Text embedding for FAISS + skill matching |
+| `BAAI/bge-small-en-v1.5` | HuggingFace sentence-transformers | Text embedding for FAISS + skill matching |
 
 No OpenAI · No Anthropic · No cloud inference · Runs fully on CPU
 

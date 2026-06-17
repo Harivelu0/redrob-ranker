@@ -566,13 +566,15 @@ def main():
     jd_embed_text = JD_EMBED_TEXT + "\n" + jd_text[:2000]  # cap to avoid noise
 
     # ── Step 2: Load model ────────────────────────────────────────────────────
-    print("[2/6] Loading SentenceTransformer (all-MiniLM-L6-v2)...")
+    print("[2/6] Loading SentenceTransformer (BAAI/bge-small-en-v1.5)...")
     from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer("all-MiniLM-L6-v2")
+    model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 
     # ── Step 3: Encode JD ─────────────────────────────────────────────────────
     print("[3/6] Encoding JD...")
-    jd_vector = model.encode([jd_embed_text], show_progress_bar=False)[0]
+    # BGE-base requires query prefix for retrieval tasks
+    bge_query_prefix = "Represent this sentence for searching relevant passages: "
+    jd_vector = model.encode([bge_query_prefix + jd_embed_text], show_progress_bar=False)[0]
     jd_vector = jd_vector / np.linalg.norm(jd_vector)  # L2 normalize
 
     # ── Step 4: First pass  collect texts, candidate data, unique skills ─────
