@@ -6,7 +6,7 @@
 
 ## Live Demo
 
-👉 [HuggingFace Space  Interactive Leaderboard](YOUR_HF_SPACE_URL)
+👉 [HuggingFace Space  Interactive Leaderboard](https://huggingface.co/spaces/Haripvelu/redrob-ranker)
 
 - **Tab 1  Leaderboard**: Search and filter top 100 candidates, read full reasoning
 - **Tab 2  Candidate Inspector**: Per-candidate signal breakdown with score charts
