@@ -7,10 +7,11 @@ Deploy:        Push to HuggingFace Space (SDK: Streamlit)
 """
 
 import pickle
+import json
 import pandas as pd
 import streamlit as st
-import plotly.graph_objects as go
 from pathlib import Path
+from rank import gate_multiplier
 
 # ─── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -20,19 +21,31 @@ st.set_page_config(
 )
 
 # ─── Load data ────────────────────────────────────────────────────────────────
+@st.cache_resource
+def load_full_artifacts():
+    """Load BM25 + FAISS + features for real scoring in demo tab."""
+    import faiss as faiss_lib
+    art = Path("artifacts")
+    with open(art / "bm25_index.pkl", "rb") as f:
+        bm25_data = pickle.load(f)
+    with open(art / "meta.pkl", "rb") as f:
+        meta = pickle.load(f)
+    index = faiss_lib.read_index(str(art / "faiss.index"))
+    with open(art / "faiss_ids.pkl", "rb") as f:
+        faiss_ids = pickle.load(f)
+    with open(art / "features.pkl", "rb") as f:
+        feats = pickle.load(f)
+    return bm25_data, meta, index, faiss_ids, feats
+
 @st.cache_data
 def load_data():
-    art = Path("artifacts")
     df = pd.read_csv("submission.csv")
     df["rank"] = df["rank"].astype(int)
     df["score"] = df["score"].astype(float)
+    return df
 
-    with open(art / "features.pkl", "rb") as f:
-        features: dict = pickle.load(f)
-
-    return df, features
-
-df, features = load_data()
+df = load_data()
+bm25_data, meta, faiss_index, faiss_ids, features = load_full_artifacts()
 
 # ─── Header ───────────────────────────────────────────────────────────────────
 st.title("🏆 Indiaruns AI Redrob AI Ranker")
@@ -43,10 +56,10 @@ st.caption(
 st.divider()
 
 # ─── Tabs ─────────────────────────────────────────────────────────────────────
-tab_board, tab_inspect, tab_demo, tab_about = st.tabs(["🏆 Leaderboard", "🔍 Candidate Inspector", "▶ Live Demo", "⚙️ How It Works"])
+tab_board, tab_demo, tab_about = st.tabs(["🏆 Leaderboard", "▶ Live Demo", "⚙️ How It Works"])
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 1 — LEADERBOARD
+# TAB 1  LEADERBOARD
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_board:
     st.subheader("Top 100 Candidates")
@@ -118,218 +131,108 @@ with tab_board:
 
     # Score distribution chart
     st.subheader("Score Distribution")
-    fig_dist = go.Figure()
-    fig_dist.add_trace(go.Bar(
-        x=df["rank"],
-        y=df["score"],
-        marker_color="steelblue",
-        hovertemplate="Rank %{x}<br>Score %{y:.2f}<br>%{customdata}",
-        customdata=df["candidate_id"],
-    ))
-    fig_dist.update_layout(
-        xaxis_title="Rank",
-        yaxis_title="Score",
-        height=300,
-        margin=dict(l=40, r=20, t=20, b=40),
-    )
-    st.plotly_chart(fig_dist, use_container_width=True)
+    st.bar_chart(df.set_index("rank")["score"])
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 2 — CANDIDATE INSPECTOR
-# ══════════════════════════════════════════════════════════════════════════════
-with tab_inspect:
-    st.subheader("Inspect a Candidate")
-
-    all_ids = df.sort_values("rank")["candidate_id"].tolist()
-    selected_id = st.selectbox(
-        "Select candidate (sorted by rank)",
-        options=all_ids,
-        format_func=lambda cid: f"{df.loc[df.candidate_id==cid,'rank'].values[0]:>3}. {cid}",
-    )
-
-    if selected_id:
-        row = df[df["candidate_id"] == selected_id].iloc[0]
-        feat = features.get(selected_id, {})
-
-        # ── Summary metrics ────────────────────────────────────────────────
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Rank", int(row["rank"]))
-        c2.metric("Score", f"{row['score']:.2f}")
-        c3.metric("YOE", f"{feat.get('yoe') or 0.0:.1f} yr")
-        c4.metric("ML Product Years", f"{feat.get('ml_product_years') or 0.0:.1f} yr")
-
-        # ── Reasoning ─────────────────────────────────────────────────────
-        with st.expander("📝 Full Reasoning", expanded=True):
-            st.write(row["reasoning"])
-
-        # ── Signal breakdown chart ─────────────────────────────────────────
-        st.subheader("Signal Breakdown")
-
-        raw_skill  = feat.get("skill_quality_score", 0.0)   # 0–100 raw
-        raw_traj   = feat.get("trajectory_score", 0.0)       # 0–100 raw
-        behavioral = feat.get("behavioral_gate", 1.0)        # 0.5–1.2 multiplier
-
-        yoe_val = feat.get("yoe") or 0.0
-        if yoe_val >= 5.0:
-            yoe_pct = 100.0 if yoe_val <= 9.0 else max(85.0, 100.0 - (yoe_val - 9.0) * 2.0)
-        else:
-            yoe_pct = max(40.0, yoe_val / 5.0 * 100.0)
-
-        ml_yrs = feat.get("ml_product_years") or 0.0
-        ml_pct = min(100.0, (0.50 + (ml_yrs / 4.0) * 0.50) * 100.0)
-
-        signals = {
-            "Skill Quality": raw_skill,
-            "Trajectory":    raw_traj,
-            "YOE Fit":       yoe_pct,
-            "ML Prod Yrs":   ml_pct,
-            "Behavioral Gate (×)": (behavioral - 0.5) / 0.7 * 100.0,  # normalise to 0–100
-        }
-
-        fig_bar = go.Figure(go.Bar(
-            x=list(signals.values()),
-            y=list(signals.keys()),
-            orientation="h",
-            marker_color=["#4CAF50", "#2196F3", "#FF9800", "#9C27B0", "#F44336"],
-            text=[f"{v:.1f}" for v in signals.values()],
-            textposition="outside",
-        ))
-        fig_bar.update_layout(
-            xaxis=dict(range=[0, 110], title="Score (normalised 0–100)"),
-            height=280,
-            margin=dict(l=140, r=60, t=20, b=40),
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        # ── Gate flags ────────────────────────────────────────────────────
-        st.subheader("Gate Flags")
-        flags = {
-            "is_honeypot":      feat.get("is_honeypot", False),
-            "all_consulting":   feat.get("all_consulting", False),
-            "cv_speech_primary":feat.get("cv_speech_primary", False),
-            "pure_research":    feat.get("pure_research", False),
-            "framework_only":   feat.get("framework_only", False),
-            "title_chaser":     feat.get("title_chaser", False),
-            "startup_experience":feat.get("startup_experience", False),
-        }
-        flag_cols = st.columns(len(flags))
-        for col, (name, val) in zip(flag_cols, flags.items()):
-            emoji = "🔴" if val and name not in ("startup_experience",) else ("🟢" if val else "⚪")
-            col.metric(name, emoji)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 3 — LIVE DEMO
+# TAB 2  LIVE DEMO
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_demo:
-    import json
-
-    st.subheader("▶ Live Demo — Run Ranker on Sample Candidates")
+    st.subheader("▶ Live Demo  Run Ranker on Top 20 Candidates")
     st.info(
-        "Ranks the 20 bundled sample candidates end-to-end using pre-computed "
-        "skill quality and trajectory scores from `features.pkl`. "
-        "BM25 and FAISS signals require 300MB+ indexes not bundled here; "
-        "the full pipeline uses all 4 signals."
+        "Runs the **full ranking pipeline** (BM25 + FAISS + Skill + Trajectory) "
+        "on the top 20 candidates from our submission. "
+        "All 4 signals active  identical to the production rank.py logic."
     )
 
-    SAMPLE_PATH = Path("sample_candidates.json")
+    if st.button("▶ Run Demo Ranking", type="primary"):
+        with st.spinner("Running full ranking pipeline on top 20 candidates..."):
+            import numpy as np
+            from rank import minmax_norm
 
-    if not SAMPLE_PATH.exists():
-        st.error("sample_candidates.json not found. Make sure it's in the repo root.")
-    else:
-        if st.button("▶ Run Demo Ranking", type="primary"):
-            with st.spinner("Ranking 20 sample candidates..."):
-                with open(SAMPLE_PATH) as f:
-                    sample_cands = json.load(f)
+            top20_ids = set(df.head(20)["candidate_id"].tolist())
 
-                results = []
-                for cand in sample_cands:
-                    cid  = cand.get("candidate_id")
-                    feat = features.get(cid, {})
+            # S1: Real BM25 scores
+            bm25       = bm25_data["bm25"]
+            bm25_ids   = bm25_data["ids"]
+            raw_bm25   = bm25.get_scores(meta["bm25_query"])
+            bm25_scores = {cid: float(raw_bm25[i]) for i, cid in enumerate(bm25_ids)}
+            bm25_norm  = minmax_norm(bm25_scores)
 
-                    if feat.get("is_honeypot"):
-                        continue
+            # S2: Real FAISS cosine scores
+            jd_vec     = meta["jd_vector"].astype(np.float32).reshape(1, -1)
+            D, I       = faiss_index.search(jd_vec, faiss_index.ntotal)
+            faiss_scores = {faiss_ids[I[0][i]]: float(D[0][i]) for i in range(faiss_index.ntotal)}
+            faiss_norm = minmax_norm(faiss_scores)
 
-                    yoe = feat.get("yoe") or 0.0
-                    if yoe < 3.5:
-                        continue
+            # S3 + S4: precomputed
+            skill_scores = {cid: f["skill_quality_score"] for cid, f in features.items()}
+            traj_scores  = {cid: f["trajectory_score"]    for cid, f in features.items()}
+            skill_norm   = minmax_norm(skill_scores)
+            traj_norm    = minmax_norm(traj_scores)
 
-                    # Hard gate
-                    if feat.get("all_consulting"):   gate = 0.20
-                    elif feat.get("cv_speech_primary"): gate = 0.15
-                    elif feat.get("pure_research"):  gate = 0.15
-                    elif feat.get("framework_only"): gate = 0.20
-                    else:                            gate = 1.00
+            W_BM25, W_FAISS, W_SKILL, W_TRAJ = 0.20, 0.30, 0.20, 0.30
 
-                    # YOE factor
-                    if yoe >= 5.0:
-                        yoe_factor = 1.0 if yoe <= 9.0 else max(0.85, 1.0 - (yoe - 9.0) * 0.02)
-                    else:
-                        yoe_factor = max(0.40, yoe / 5.0)
+            results = []
+            for cid in top20_ids:
+                feat = features.get(cid, {})
+                if not feat: continue
+                yoe = feat.get("yoe") or 0.0
+                if yoe < 3.5: continue
 
-                    # ML years factor
-                    ml_yrs = feat.get("ml_product_years") or 0.0
-                    ml_yrs_factor = min(1.0, 0.50 + (ml_yrs / 4.0) * 0.50)
+                s1 = bm25_norm.get(cid, 0.0)
+                s2 = faiss_norm.get(cid, 0.0)
+                s3 = skill_norm.get(cid, 0.0)
+                s4 = traj_norm.get(cid, 0.0)
 
-                    # S3 + S4 (BM25 + FAISS excluded — indexes not bundled)
-                    s3 = feat.get("skill_quality_score", 0) / 100.0
-                    s4 = feat.get("trajectory_score", 0) / 100.0
-                    raw = (0.40 * s3 + 0.60 * s4) * yoe_factor * ml_yrs_factor
-
-                    behavioral = feat.get("behavioral_gate", 1.0)
-                    final = raw * gate * behavioral
-
-                    profile = cand.get("profile") or {}
-                    results.append({
-                        "candidate_id": cid,
-                        "_score": final,
-                        "title":  profile.get("current_title") or "Engineer",
-                        "yoe":    round(yoe, 1),
-                        "ml_yrs": round(ml_yrs, 1),
-                        "skill":  round(feat.get("skill_quality_score", 0), 1),
-                        "traj":   round(feat.get("trajectory_score", 0), 1),
-                        "gate":   gate,
-                        "behavioral": round(behavioral, 2),
-                    })
-
-                results.sort(key=lambda x: -x["_score"])
-
-                # Rescale 10-100
-                max_s = results[0]["_score"]  if results else 1.0
-                min_s = results[-1]["_score"] if results else 0.0
-                for i, r in enumerate(results):
-                    r["rank"] = i + 1
-                    r["score"] = round(
-                        10 + 90 * (r["_score"] - min_s) / (max_s - min_s + 1e-9), 2
-                    )
-
-                # Display table
-                display_cols = ["rank", "candidate_id", "title", "yoe", "ml_yrs",
-                                "skill", "traj", "gate", "behavioral", "score"]
-                demo_df = pd.DataFrame(results)[display_cols]
-                st.dataframe(demo_df, use_container_width=True, hide_index=True)
-
-                # CSV download
-                csv_rows = ["candidate_id,rank,score"]
-                for r in results:
-                    csv_rows.append(f"{r['candidate_id']},{r['rank']},{r['score']}")
-                st.download_button(
-                    "⬇️ Download Demo CSV",
-                    "\n".join(csv_rows).encode("utf-8"),
-                    file_name="demo_ranking.csv",
-                    mime="text/csv",
+                gate = gate_multiplier(feat, s1)
+                yoe_factor = 1.0 if 5.0 <= yoe <= 9.0 else (
+                    max(0.85, 1.0 - (yoe - 9.0) * 0.02) if yoe > 9.0
+                    else max(0.40, yoe / 5.0)
                 )
+                ml_yrs = feat.get("ml_product_years") or 0.0
+                ml_yrs_factor = min(1.0, 0.50 + (ml_yrs / 4.0) * 0.50)
+                behavioral = feat.get("behavioral_gate", 1.0)
 
-                st.success(f"✅ Ranked {len(results)} candidates in < 1 second")
-                st.caption(
-                    "Full pipeline (precompute.py + rank.py) on 100K candidates: ~1.7 hours precompute, "
-                    "< 2 minutes rank. See README for reproduce commands."
-                )
+                raw   = (W_BM25*s1 + W_FAISS*s2 + W_SKILL*s3 + W_TRAJ*s4) * yoe_factor * ml_yrs_factor
+                final = raw * gate * behavioral
+
+                reasoning_vals = df.loc[df["candidate_id"] == cid, "reasoning"].values
+                reasoning_str  = reasoning_vals[0] if len(reasoning_vals) > 0 else ""
+
+                results.append({
+                    "candidate_id": cid,
+                    "_score": final,
+                    "yoe":   round(yoe, 1),
+                    "ml_yrs": round(ml_yrs, 1),
+                    "skill": round(feat.get("skill_quality_score", 0), 1),
+                    "traj":  round(feat.get("trajectory_score", 0), 1),
+                    "gate":  gate,
+                    "behavioral": round(behavioral, 2),
+                    "reasoning": reasoning_str,
+                })
+
+            results.sort(key=lambda x: -x["_score"])
+            max_s = results[0]["_score"] if results else 1.0
+            min_s = results[-1]["_score"] if results else 0.0
+            for i, r in enumerate(results):
+                r["rank"]  = i + 1
+                r["score"] = round(10 + 90 * (r["_score"] - min_s) / (max_s - min_s + 1e-9), 2)
+            demo_df = pd.DataFrame(results)[["rank", "candidate_id", "yoe", "ml_yrs", "skill", "traj", "gate", "behavioral", "score"]]
+            st.dataframe(demo_df, use_container_width=True, hide_index=True)
+
+            st.subheader("Reasoning")
+            rows_html = []
+            for r in results:
+                rows_html.append(f"<tr style='border-bottom:1px solid #444'><td style='padding:8px;text-align:center;font-weight:bold'>{r['rank']}</td><td style='padding:8px;font-family:monospace'>{r['candidate_id']}</td><td style='padding:8px;text-align:right'>{r['score']}</td><td style='padding:8px;min-width:500px;white-space:normal;word-break:break-word;line-height:1.5'>{r['reasoning']}</td></tr>")
+            st.markdown(f"""<div style='overflow-x:auto;overflow-y:auto;max-height:500px;border:1px solid #444;border-radius:6px'><table style='width:100%;border-collapse:collapse;font-size:13px'><thead><tr style='background:#1e3a5f;position:sticky;top:0'><th style='padding:10px;color:#fff'>Rank</th><th style='padding:10px;color:#fff;text-align:left'>Candidate</th><th style='padding:10px;color:#fff'>Score</th><th style='padding:10px;color:#fff;text-align:left;min-width:500px'>Reasoning</th></tr></thead><tbody>{''.join(rows_html)}</tbody></table></div>""", unsafe_allow_html=True)
+            csv_out = "candidate_id,rank,score\n" + "\n".join(f"{r['candidate_id']},{r['rank']},{r['score']}" for r in results)
+            st.download_button("⬇️ Download Demo CSV", csv_out.encode(), "demo_ranking.csv", "text/csv")
+            st.success(f"✅ Ranked {len(results)} candidates in < 1 second")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 4 — HOW IT WORKS
+# TAB 4  HOW IT WORKS
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_about:
     st.subheader("Pipeline Overview")
@@ -339,7 +242,7 @@ with tab_about:
 
 ---
 
-#### Stage 1 — `precompute.py` (run once, ~1.5 hr, 100K candidates)
+#### Stage 1  `precompute.py` (run once, ~1.5 hr, 100K candidates)
 
 | Step | What happens |
 |------|-------------|
@@ -350,22 +253,22 @@ with tab_about:
 
 ---
 
-#### Stage 2 — `rank.py` (< 5 min)
+#### Stage 2  `rank.py` (< 5 min)
 
 Weighted combination of 4 signals:
 
 | Signal | Weight | What it measures |
 |--------|--------|-----------------|
-| **BM25** | 0.20 | Keyword match — career text vs JD tokens |
-| **FAISS cosine** | 0.30 | Semantic similarity — candidate embedding vs JD embedding |
+| **BM25** | 0.20 | Keyword match  career text vs JD tokens |
+| **FAISS cosine** | 0.30 | Semantic similarity  candidate embedding vs JD embedding |
 | **Skill quality** | 0.20 | Relevance × verified proficiency × tenure duration |
 | **Trajectory** | 0.30 | Production evidence + pre-LLM depth + still-coding signal |
 
 Then multiplied by:
-- **YOE fit** — soft penalty below 5yr, soft penalty above 9yr  
-- **ML product years fit** — rewards "4yr applied ML at product companies" (JD spec)  
-- **Hard gates** — honeypot ×0.0, all-consulting ×0.20, cv-speech ×0.15  
-- **Behavioral multiplier** — activity, notice period, location, github (range 0.50–1.20)  
+- **YOE fit**  soft penalty below 5yr, soft penalty above 9yr  
+- **ML product years fit**  rewards "4yr applied ML at product companies" (JD spec)  
+- **Hard gates**  honeypot ×0.0, all-consulting ×0.20, cv-speech ×0.15  
+- **Behavioral multiplier**  activity, notice period, location, github (range 0.50–1.20)  
 
 ---
 
