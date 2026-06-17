@@ -1,0 +1,50 @@
+team_name: "VibeRanker"
+submission_version: "1.0"
+track: "Track 1 - Data & AI Challenge"
+
+approach_summary: >
+  Hybrid retrieval + rule-based ranking pipeline. No LLM API calls.
+  All computation runs locally on CPU.
+
+  Stage 1 (precompute.py — one-time):
+    - Encodes JD and all 100K candidate career texts using all-MiniLM-L6-v2
+    - Builds FAISS IndexFlatIP for cosine similarity search
+    - Builds BM25Okapi index for keyword retrieval
+    - Computes per-candidate features: boolean flags (honeypot, consulting-only,
+      framework-only, pure-research, cv-speech-primary, title-chaser),
+      skill_quality_score, trajectory_score, ml_product_years, behavioral_gate
+
+  Stage 2 (rank.py — under 5 min):
+    - S1 BM25 (0.35): keyword match on career descriptions vs JD query tokens
+    - S2 FAISS (0.25): cosine similarity between candidate embedding and JD embedding
+    - S3 Skill quality (0.20): skill relevance × verified proficiency × duration
+    - S4 Trajectory (0.20): production evidence + pre-LLM depth + still-coding signal
+    - Hard gates: honeypot (×0.0), all-consulting (×0.20), cv-speech (×0.15),
+      pure-research (×0.15), framework-only (×0.20)
+    - Behavioral multiplier (0.50–1.10): activity, response rate, notice period,
+      location, github activity, verification signals
+
+models_used:
+  - name: "all-MiniLM-L6-v2"
+    source: "HuggingFace (sentence-transformers)"
+    usage: "Text embedding for FAISS index and skill relevance scoring"
+    runs_locally: true
+    api_calls: false
+
+libraries:
+  - sentence-transformers==5.5.1
+  - faiss-cpu==1.14.3
+  - rank-bm25==0.2.2
+  - scikit-learn==1.9.0
+  - numpy
+  - python-docx
+
+runtime:
+  precompute_hours: 8
+  rank_minutes: 2
+  hardware: "CPU only, no GPU"
+
+no_external_api_calls: true
+no_openai: true
+no_anthropic: true
+no_cloud_services: true

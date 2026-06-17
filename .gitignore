@@ -1,0 +1,22 @@
+# Large artifacts — regenerate with precompute.py
+artifacts/bm25_index.pkl
+artifacts/faiss.index
+
+# Debug / temp scripts (not part of pipeline)
+check_honeypots.py
+check_targets.py
+debug_traj.py
+patch_bm25_query.py
+patch_skill_scores.py
+patch_skill_scores_v2.py
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.benchmarks/
+
+# Data files (not to be committed)
+*.jsonl
+*.docx
