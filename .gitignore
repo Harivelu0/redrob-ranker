@@ -1,4 +1,5 @@
-# Large artifacts — regenerate with precompute.py
+# Large artifacts  regenerate with precompute.py
+
 artifacts/bm25_index.pkl
 artifacts/faiss.index
 

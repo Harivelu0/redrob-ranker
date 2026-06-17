@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-precompute.py — One-time preprocessing for Redrob Hackathon Ranker.
+precompute.py  One-time preprocessing for Redrob Hackathon Ranker.
 No time limit. Run once before rank.py.
 
 Usage:
@@ -41,7 +41,7 @@ CONSULTING_FIRMS = {
 }
 
 # ── Company prestige: structural signal (industry + size) ────────────────────
-# Minimal hardcoded list — only unambiguous global T1 for ML roles.
+# Minimal hardcoded list  only unambiguous global T1 for ML roles.
 # Everything else derived from industry + company_size fields in the data.
 KNOWN_T1_COMPANIES = {
     "google", "meta", "apple", "microsoft", "amazon",
@@ -62,7 +62,7 @@ SERVICES_INDUSTRIES = {"IT Services", "Consulting"}
 def compute_prestige_bonus(job: dict) -> float:
     """
     Data-driven prestige: industry + company_size, with a tiny hardcoded list
-    for unambiguous global T1. This is how production hiring systems work —
+    for unambiguous global T1. This is how production hiring systems work 
     structured metadata first, exact names only as a last-resort override.
     Returns 0.0 – 0.20.
     """
@@ -83,9 +83,9 @@ def compute_prestige_bonus(job: dict) -> float:
         if size in ("5001-10000", "10001+"):  return 0.15
         if size in ("1001-5000"):             return 0.10
         if size in ("501-1000", "201-500"):   return 0.07
-        return 0.03  # small startup — some credit
+        return 0.03  # small startup  some credit
 
-    # Unknown industry — weak size proxy only
+    # Unknown industry  weak size proxy only
     if size in ("5001-10000", "10001+"):  return 0.05
     return 0.00
 
@@ -415,7 +415,7 @@ def compute_behavioral_gate(cand: dict) -> float:
     if ic >= 0.80:  delta += 0.05
     elif ic < 0.30: delta -= 0.05
 
-    # offer acceptance — explicit None check to avoid 0.0 or -1 = -1 bug
+    # offer acceptance  explicit None check to avoid 0.0 or -1 = -1 bug
     oa = sig.get("offer_acceptance_rate")
     if oa is None:
         oa = -1
@@ -515,7 +515,7 @@ def compute_trajectory_score(cand: dict, career_text: str) -> float:
         title_scores.append(recency_weight * (level_multiplier if is_ml else 0.0))
     title_progression = min(1.0, sum(title_scores) / 1.5) if title_scores else 0.0
 
-    # 5. Company prestige bonus — data-driven via industry + size
+    # 5. Company prestige bonus  data-driven via industry + size
     prestige_bonus = compute_prestige_bonus(sorted_jobs[0]) if sorted_jobs else 0.0
 
     # Penalty for title chaser
@@ -575,7 +575,7 @@ def main():
     jd_vector = model.encode([jd_embed_text], show_progress_bar=False)[0]
     jd_vector = jd_vector / np.linalg.norm(jd_vector)  # L2 normalize
 
-    # ── Step 4: First pass — collect texts, candidate data, unique skills ─────
+    # ── Step 4: First pass  collect texts, candidate data, unique skills ─────
     print("[4/6] First pass: reading candidates.jsonl...")
     candidate_ids: List[str] = []
     career_texts: List[str] = []
@@ -725,11 +725,11 @@ def main():
         pickle.dump(meta, f)
 
     print("\n✓ Precompute complete. Artifacts in:", str(out_dir))
-    print(f"  features.pkl   — {len(features)} candidates")
-    print(f"  bm25_index.pkl — BM25 index")
-    print(f"  faiss.index    — {n} vectors")
-    print(f"  faiss_ids.pkl  — candidate ID order")
-    print(f"  meta.pkl       — JD vector + query tokens")
+    print(f"  features.pkl    {len(features)} candidates")
+    print(f"  bm25_index.pkl  BM25 index")
+    print(f"  faiss.index     {n} vectors")
+    print(f"  faiss_ids.pkl   candidate ID order")
+    print(f"  meta.pkl        JD vector + query tokens")
 
 
 if __name__ == "__main__":

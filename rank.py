@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-rank.py — Main ranking script. Must finish < 5 min. CPU only. No network.
+rank.py  Main ranking script. Must finish < 5 min. CPU only. No network.
 
 Usage:
     python rank.py \
@@ -24,10 +24,10 @@ from tqdm import tqdm
 # ─────────────────────────────────────────────────────────────────────────────
 # SCORING WEIGHTS
 # ─────────────────────────────────────────────────────────────────────────────
-W_BM25  = 0.20   # keyword match — useful but easily gamed
-W_FAISS = 0.30   # semantic similarity — stronger signal for technical JD
+W_BM25  = 0.20   # keyword match  useful but easily gamed
+W_FAISS = 0.30   # semantic similarity  stronger signal for technical JD
 W_SKILL = 0.20
-W_TRAJ  = 0.30   # trajectory — prestige + seniority + production depth
+W_TRAJ  = 0.30   # trajectory  prestige + seniority + production depth
 
 # ─────────────────────────────────────────────────────────────────────────────
 # GATE MULTIPLIERS
@@ -127,18 +127,18 @@ def main():
         s3 = skill_norm.get(cid, 0.0)
         s4 = traj_norm.get(cid, 0.0)
 
-        # Hard YOE gate — JD says 5-9yr, exclude clearly under-qualified
+        # Hard YOE gate  JD says 5-9yr, exclude clearly under-qualified
         yoe = feat.get("yoe") or 0.0
         if yoe < 3.5:
             continue
 
-        # YOE soft multiplier — JD says 5-9yr range, ideal 6-8yr
+        # YOE soft multiplier  JD says 5-9yr range, ideal 6-8yr
         if yoe >= 5.0:
             yoe_factor = 1.0 if yoe <= 9.0 else max(0.85, 1.0 - (yoe - 9.0) * 0.02)
         else:
             yoe_factor = max(0.40, yoe / 5.0)  # 4yr=0.80, 3yr=0.60, 2yr=0.40
 
-        # ML product years multiplier — JD: "4-5yr in applied ML at product companies"
+        # ML product years multiplier  JD: "4-5yr in applied ML at product companies"
         # Captures quantity of relevant experience; complements trajectory_score (quality).
         ml_yrs = feat.get("ml_product_years") or 0.0
         ml_yrs_factor = min(1.0, 0.50 + (ml_yrs / 4.0) * 0.50)  # 0yr=0.50 → 4yr+=1.0

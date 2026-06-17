@@ -1,5 +1,5 @@
 """
-test_explain.py — explain.py output correctness.
+test_explain.py  explain.py output correctness.
 Tests that reasoning is fact-anchored, rank-appropriate, and non-identical.
 """
 import sys

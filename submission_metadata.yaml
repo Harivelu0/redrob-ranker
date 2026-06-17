@@ -1,28 +1,54 @@
 team_name: "VibeRanker"
-submission_version: "1.0"
+
+primary_contact:
+  name: ""
+  email: ""
+  phone: ""
+
+team_members:
+  - name: "Haripriya Veluchamy"
+    email: "haripriyaveluchamy@gmail.com"
+    role: "Software Engineer ML Pipeline, Ranking System, Infrastructure"
+
+github_repo: "https://github.com/Harivelu0/redrob-ranker"
+sandbox_link: "https://huggingface.co/spaces/Haripvelu/redrob-ranker"
+
+reproduce_command: "python rank.py --candidates ./candidates.jsonl --artifacts ./artifacts/ --out ./submission.csv"
+
+compute:
+  platform: "Windows 11 Local Machine"
+  cpu_cores: 8
+  ram_gb: 16
+  python_version: "3.13"
+  os: "Windows 11"
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: true
+  pre_computation_time_minutes: 100
+
+ai_tools_used:
+  - "Claude"
+
+ai_usage_summary: |
+  Used Claude for architecture discussion, code review, and debugging.
+  All engineering decisions, design choices, and implementation were made
+  by the team. No candidate data was fed to any external LLM.
+  The ranking system makes zero external API calls at inference time.
+
+methodology_summary: |
+  Two-stage CPU-only hybrid ranking pipeline. Stage 1 (precompute.py, ~1.7hr):
+  encodes 100K career texts with all-MiniLM-L6-v2, builds FAISS IndexFlatIP
+  and BM25Okapi indexes, computes per-candidate features (skill quality, trajectory
+  score, ML product years, behavioral gate, boolean gates). Stage 2 (rank.py, <5min):
+  weighted combination of BM25 (0.20) + FAISS cosine (0.30) + skill quality (0.20)
+  + trajectory (0.30), multiplied by YOE fit, ML product years fit, hard gates
+  (honeypot x0.0, consulting x0.20, cv-speech x0.15, pure-research x0.15,
+  framework-only x0.20), and behavioral multiplier (0.50-1.10). Trajectory score
+  rewards production deployment evidence, pre-LLM ML depth, seniority level,
+  and company prestige derived from industry and company_size fields.
+
 track: "Track 1 - Data & AI Challenge"
-
-approach_summary: >
-  Hybrid retrieval + rule-based ranking pipeline. No LLM API calls.
-  All computation runs locally on CPU.
-
-  Stage 1 (precompute.py — one-time):
-    - Encodes JD and all 100K candidate career texts using all-MiniLM-L6-v2
-    - Builds FAISS IndexFlatIP for cosine similarity search
-    - Builds BM25Okapi index for keyword retrieval
-    - Computes per-candidate features: boolean flags (honeypot, consulting-only,
-      framework-only, pure-research, cv-speech-primary, title-chaser),
-      skill_quality_score, trajectory_score, ml_product_years, behavioral_gate
-
-  Stage 2 (rank.py — under 5 min):
-    - S1 BM25 (0.35): keyword match on career descriptions vs JD query tokens
-    - S2 FAISS (0.25): cosine similarity between candidate embedding and JD embedding
-    - S3 Skill quality (0.20): skill relevance × verified proficiency × duration
-    - S4 Trajectory (0.20): production evidence + pre-LLM depth + still-coding signal
-    - Hard gates: honeypot (×0.0), all-consulting (×0.20), cv-speech (×0.15),
-      pure-research (×0.15), framework-only (×0.20)
-    - Behavioral multiplier (0.50–1.10): activity, response rate, notice period,
-      location, github activity, verification signals
+submission_version: "1.0"
 
 models_used:
   - name: "all-MiniLM-L6-v2"
@@ -40,7 +66,7 @@ libraries:
   - python-docx
 
 runtime:
-  precompute_hours: 8
+  precompute_hours: 1.7
   rank_minutes: 2
   hardware: "CPU only, no GPU"
 
@@ -48,3 +74,10 @@ no_external_api_calls: true
 no_openai: true
 no_anthropic: true
 no_cloud_services: true
+
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true
+  no_collusion: true
+  honeypot_check_done: true
+  reproduction_tested: true

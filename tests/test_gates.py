@@ -1,5 +1,5 @@
 """
-test_gates.py — Gate multipliers, minmax normalization, behavioral gate.
+test_gates.py  Gate multipliers, minmax normalization, behavioral gate.
 """
 import sys
 from pathlib import Path
@@ -12,7 +12,7 @@ from precompute import compute_behavioral_gate
 
 def _neutral_candidate():
     """
-    Candidate with gate == 1.0 — all signals at zero-contribution midpoints.
+    Candidate with gate == 1.0  all signals at zero-contribution midpoints.
     Use for comparison tests that need to isolate the effect of a single variable.
     """
     cand = make_candidate()
@@ -155,6 +155,7 @@ def test_behavioral_gate_clamps_to_maximum():
     cand = make_candidate()
     gate = compute_behavioral_gate(cand)
     assert gate <= 1.20
+
 
 def test_behavioral_gate_outside_india_no_relocate_penalized():
     """Outside India (no relocate) scores lower than other-India city with same signals."""

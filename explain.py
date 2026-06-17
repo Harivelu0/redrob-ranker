@@ -6,11 +6,12 @@ No hallucination. References specific facts from the candidate profile.
 
 from typing import Optional
 
+
 PROFICIENCY_MAP = {
     "beginner": 0.25, "intermediate": 0.60, "advanced": 0.85, "expert": 1.00,
 }
 
-# Skills that are actually relevant to this JD
+# Skills that are actually relevant to the JD
 JD_RELEVANT_SKILLS = {
     "nlp", "natural language processing", "information retrieval", "vector search",
     "embeddings", "semantic search", "ranking", "recommendation", "bert", "transformers",
@@ -35,7 +36,6 @@ def _top_skills(skills: list, n: int = 3) -> str:
         d = min(1.0, (sk.get("duration_months") or 0) / 24.0)
         scored.append((p * d, name))
     if not scored:
-        # fallback — any skill at all
         for sk in skills:
             p = PROFICIENCY_MAP.get(sk.get("proficiency") or "beginner", 0.25)
             d = min(1.0, (sk.get("duration_months") or 0) / 24.0)
@@ -77,12 +77,12 @@ def generate_reason(cand: dict, feat: dict, rank: int, score: float, seen_descs:
     skills  = cand.get("skills") or []
     sig     = cand.get("redrob_signals") or {}
 
-    yoe  = profile.get("years_of_experience") or 0
-    title = profile.get("current_title") or profile.get("headline") or "Engineer"
+    yoe     = profile.get("years_of_experience") or 0
+    title   = profile.get("current_title") or profile.get("headline") or "Engineer"
     company = profile.get("current_company") or "current company"
-    top_sk = _top_skills(skills)
+    top_sk  = _top_skills(skills)
     loc_str = _location_str(profile, sig)
-    ml_yrs = feat.get("ml_product_years") or 0.0
+    ml_yrs  = feat.get("ml_product_years") or 0.0
     gh_score = sig.get("github_activity_score") or -1
 
     recent = _most_recent_role(career)
@@ -90,9 +90,8 @@ def generate_reason(cand: dict, feat: dict, rank: int, score: float, seen_descs:
     if recent:
         desc = (recent.get("description") or "").strip()
         if desc:
-            # Skip if this exact description was already used for another candidate
             if seen_descs is not None and desc in seen_descs:
-                desc = ""  # fall through to skills-based snippet below
+                desc = ""  # duplicate — skip recent snippet
             else:
                 if seen_descs is not None:
                     seen_descs.add(desc)
@@ -122,7 +121,6 @@ def generate_reason(cand: dict, feat: dict, rank: int, score: float, seen_descs:
     concern_str = ("; concern: " + "; ".join(concerns)) if concerns else ""
 
     if rank <= 10:
-        # Lead with evidence
         ml_str = f"{ml_yrs:.1f}yr at ML product companies" if ml_yrs >= 1 else ""
         gh_str = f" github_activity={gh_score:.0f}" if gh_score >= 0 else ""
         return (
@@ -138,7 +136,7 @@ def generate_reason(cand: dict, feat: dict, rank: int, score: float, seen_descs:
         ).strip()
 
     else:
-        # Rank 51-100: specific about what's missing, not a generic template
+        # Rank 51-100: specific about gaps, honest about concerns
         gap_parts = []
         if not feat.get("ml_product_years") or feat.get("ml_product_years", 0) < 2:
             gap_parts.append("limited ML product company tenure")
@@ -152,7 +150,7 @@ def generate_reason(cand: dict, feat: dict, rank: int, score: float, seen_descs:
             gap_parts.append("CV/speech primary domain")
         if not gap_parts:
             gap_parts.append("lower semantic match to JD on retrieval/ranking signals")
-        # Combine both concerns and gaps
+        # Combine concerns and gaps — don't swallow one when both exist
         all_issues = []
         if concerns:
             all_issues.append("concern: " + "; ".join(concerns))

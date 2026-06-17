@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-weight_experiment.py — Tries 4 weight combinations, shows top 10 for each.
+weight_experiment.py  Tries 4 weight combinations, shows top 10 for each.
 No files modified. Pure comparison.
 
 Run: python weight_experiment.py --artifacts artifacts/ --candidates path/to/candidates.jsonl
@@ -21,11 +21,11 @@ from rank import minmax_norm
 
 EXPERIMENTS = [
     # label,           W_BM25, W_FAISS, W_SKILL, W_TRAJ
-    ("v1 original",    0.35,   0.25,    0.20,    0.20),
-    ("v2 boost faiss", 0.25,   0.25,    0.20,    0.30),
-    ("v3 final",       0.20,   0.30,    0.20,    0.30),  # ← current
-    ("boost skill",    0.20,   0.25,    0.30,    0.25),
-    ("equal",          0.25,   0.25,    0.25,    0.25),
+    ("Current",        0.35,   0.25,    0.20,    0.20),
+    ("Boost FAISS",    0.30,   0.35,    0.20,    0.15),
+    ("Boost Skill",    0.30,   0.25,    0.30,    0.15),
+    ("Boost Traj",     0.30,   0.25,    0.15,    0.30),
+    ("Equal",          0.25,   0.25,    0.25,    0.25),
 ]
 
 
@@ -127,9 +127,8 @@ def main():
 
     # Run experiments
     print("\n" + "="*80)
-    print("  WEIGHT EXPERIMENT — TOP 10 COMPARISON")
+    print("  WEIGHT EXPERIMENT  TOP 10 COMPARISON")
     print("="*80)
-
     results = {}
     for label, w1, w2, w3, w4 in EXPERIMENTS:
         ranked = rank_with_weights(
