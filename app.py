@@ -15,7 +15,7 @@ from rank import gate_multiplier
 
 # ─── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="IndiaRuns AI Redrob AI Ranker",
+    page_title="Indiaruns AI Redrob Ranker",
     page_icon="🏆",
     layout="wide",
 )
